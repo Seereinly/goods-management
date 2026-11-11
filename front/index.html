@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>商品管理系统</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: "Microsoft Yahei", sans-serif;
+            padding:20px;
+            background:#f5f7fa;
+        }
+        .login-box{
+            max-width:420px;
+            margin:120px auto;
+            background:#fff;
+            padding:30px;
+            border-radius:8px;
+            box-shadow:0 2px 12px #0000001a;
+        }
+        .login-box h2{
+            text-align:center;
+            margin-bottom:24px;
+            color:#333;
+        }
+        .form-item{
+            margin-bottom:16px;
+        }
+        label{
+            display:block;
+            margin-bottom:6px;
+            color:#555;
+        }
+        input,select{
+            width:100%;
+            padding:10px 12px;
+            border:1px solid #ddd;
+            border-radius:4px;
+            font-size:14px;
+        }
+        button{
+            padding:10px 16px;
+            border:none;
+            border-radius:4px;
+            cursor:pointer;
+            font-size:14px;
+        }
+        .btn-primary{
+            background:#409eff;
+            color:#fff;
+        }
+        .main{
+            display:none;
+        }
+        .header{
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            background:#fff;
+            padding:14px 20px;
+            border-radius:8px;
+            margin-bottom:20px;
+        }
+        .btn-logout{
+            background:#f56c6c;
+            color:white;
+        }
+        .card{
+            background:#fff;
+            padding:20px;
+            border-radius:8px;
+            margin-bottom:20px;
+        }
+        table{
+            width:100%;
+            border-collapse:collapse;
+        }
+        th,td{
+            border:1px solid #eee;
+            padding:12px;
+            text-align:left;
+        }
+        th{
+            background:#fafafa;
+        }
+        .btn-edit{
+            background:#67c23a;
+            color:white;
+            margin-right:6px;
+        }
+        .btn-del{
+            background:#f56c6c;
+            color:white;
+            margin-right:6px;
+        }
+        .btn-order{
+            background:#e6a23c;
+            color:white;
+        }
+        .form-row{
+            display:flex;
+            gap:12px;
+            align-items:end;
+            flex-wrap:wrap;
+        }
+        .form-row .form-item{
+            flex:1;
+            min-width:140px;
+        }
+        /* 弹窗通用样式 */
+        .mask{
+            position:fixed;
+            top:0;
+            left:0;
+            width:100%;
+            height:100%;
+            background:rgba(0,0,0,0.4);
+            display:none;
+            align-items:center;
+            justify-content:center;
+            z-index:999;
+        }
+        .modal{
+            width:420px;
+            background:#fff;
+            padding:24px;
+            border-radius:8px;
+        }
+        .modal-title{
+            font-size:18px;
+            margin-bottom:20px;
+        }
+        .modal-footer{
+            display:flex;
+            justify-content:flex-end;
+            gap:10px;
+            margin-top:20px;
+        }
+        .btn-cancel{
+            background:#909399;
+            color:#fff;
+        }
+        .stat-row{
+            display:flex;
+            gap:30px;
+            flex-wrap:wrap;
+        }
+        .stat-item{
+            font-size:15px;
+        }
+        .warn{
+            color:#f56c6c;
+            font-weight:bold;
+        }
+    </style>
+</head>
+<body>
+
+<!-- 登录页面 -->
+<div class="login-box" id="loginWrap">
+    <h2>商品管理-登录</h2>
+    <div class="form-item">
+        <label>用户名</label>
+        <input type="text" id="username" placeholder="请输入用户名">
+    </div>
+    <div class="form-item">
+        <label>密码</label>
+        <input type="password" id="password" placeholder="请输入密码">
+    </div>
+    <div class="form-item">
+        <button class="btn-primary" onclick="login()">登录</button>
+    </div>
+</div>
+
+<!-- 主业务页面 -->
+<div class="main" id="mainWrap">
+    <div class="header">
+        <h2>商品管理系统</h2>
+        <button class="btn-logout" onclick="logout()">退出登录</button>
+    </div>
+
+    <!-- 统计面板 -->
+    <div class="card">
+        <h3>数据统计</h3>
+        <div class="stat-row" style="margin-top:12px;">
+            <div class="stat-item">商品总数：<span id="statTotalProduct">0</span></div>
+            <div class="stat-item">总库存：<span id="statTotalStock">0</span></div>
+            <div class="stat-item warn">库存预警(＜50)：<span id="statWarnCount">0</span></div>
+        </div>
+    </div>
+
+    <!-- 搜索区域（增加分类下拉） -->
+    <div class="card">
+        <div class="form-row">
+            <div class="form-item">
+                <label>商品名称</label>
+                <input type="text" id="searchName" placeholder="输入商品名称搜索">
+            </div>
+            <div class="form-item">
+                <label>商品分类</label>
+                <select id="searchCategory">
+                    <option value="">全部分类</option>
+                    <option value="日用品">日用品</option>
+                    <option value="文具">文具</option>
+                    <option value="饮品">饮品</option>
+                </select>
+            </div>
+            <button class="btn-primary" onclick="searchProduct()">查询</button>
+            <button onclick="loadProductList()">重置</button>
+            <button class="btn-primary" onclick="openAddModal()">新增商品</button>
+        </div>
+    </div>
+
+    <!-- 商品列表（增加分类列） -->
+    <div class="card">
+        <h3>商品列表</h3>
+        <table>
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>商品名称</th>
+                <th>分类</th>
+                <th>价格</th>
+                <th>库存</th>
+                <th>操作</th>
+            </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <!-- 订单列表区域 -->
+    <div class="card">
+        <h3>订单列表</h3>
+        <button class="btn-primary" onclick="loadOrderList()">刷新订单</button>
+        <table>
+            <thead>
+            <tr>
+                <th>订单ID</th>
+                <th>商品ID</th>
+                <th>购买数量</th>
+                <th>下单时间</th>
+            </tr>
+            </thead>
+            <tbody id="orderTableBody"></tbody>
+        </table>
+    </div>
+
+</div>
+
+<!-- 新增弹窗（增加分类） -->
+<div class="mask" id="addMask">
+    <div class="modal">
+        <div class="modal-title">新增商品</div>
+        <div class="form-item">
+            <label>商品名称</label>
+            <input type="text" id="addProductName">
+        </div>
+        <div class="form-item">
+            <label>分类</label>
+            <select id="addCategory">
+                <option value="日用品">日用品</option>
+                <option value="文具">文具</option>
+                <option value="饮品">饮品</option>
+            </select>
+        </div>
+        <div class="form-item">
+            <label>价格</label>
+            <input type="number" step="0.01" id="addPrice">
+        </div>
+        <div class="form-item">
+            <label>库存</label>
+            <input type="number" id="addStock">
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel" onclick="closeAddModal()">取消</button>
+            <button class="btn-primary" onclick="submitAdd()">确认新增</button>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑弹窗（增加分类） -->
+<div class="mask" id="editMask">
+    <div class="modal">
+        <div class="modal-title">编辑商品</div>
+        <input type="hidden" id="modalId">
+        <div class="form-item">
+            <label>商品名称</label>
+            <input type="text" id="modalProductName">
+        </div>
+        <div class="form-item">
+            <label>分类</label>
+            <select id="modalCategory">
+                <option value="日用品">日用品</option>
+                <option value="文具">文具</option>
+                <option value="饮品">饮品</option>
+            </select>
+        </div>
+        <div class="form-item">
+            <label>价格</label>
+            <input type="number" step="0.01" id="modalPrice">
+        </div>
+        <div class="form-item">
+            <label>库存</label>
+            <input type="number" id="modalStock">
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel" onclick="closeEditModal()">取消</button>
+            <button class="btn-primary" onclick="submitEdit()">确认修改</button>
+        </div>
+    </div>
+</div>
+
+<!-- 下单弹窗 -->
+<div class="mask" id="orderMask">
+    <div class="modal">
+        <div class="modal-title">提交下单</div>
+        <input type="hidden" id="orderProductId">
+        <div class="form-item">
+            <label>购买数量</label>
+            <input type="number" id="orderBuyNum" min="1" value="1">
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel" onclick="closeOrderModal()">取消</button>
+            <button class="btn-primary" onclick="submitOrder()">确认下单</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const baseURL = "http://localhost:8080";
+
+    function getToken(){
+        let t = localStorage.getItem("token");
+        if(!t) return "";
+        t = t.replace(/\0/g, '');
+        return t;
+    }
+
+    async function login(){
+        const username = document.getElementById("username").value.trim();
+        const password = document.getElementById("password").value.trim();
+        if(!username || !password){
+            alert("请输入用户名和密码");
+            return;
+        }
+        const res = await fetch(`${baseURL}/auth/login`,{
+            method:"POST",
+            headers:{"Content-Type":"application/x-www-form-urlencoded"},
+            body:`username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+        });
+        const data = await res.json();
+        if(data.code ===200){
+            localStorage.setItem("token", data.data);
+            alert("登录成功");
+            showMain();
+            loadProductList();
+            loadStatistics();
+            loadOrderList();
+        }else{
+            alert(data.msg);
+        }
+    }
+
+    function logout(){
+        localStorage.removeItem("token");
+        document.getElementById("loginWrap").style.display="block";
+        document.getElementById("mainWrap").style.display="none";
+    }
+
+    function showMain(){
+        document.getElementById("loginWrap").style.display="none";
+        document.getElementById("mainWrap").style.display="block";
+    }
+
+    async function loadProductList(){
+        document.getElementById("searchName").value = "";
+        document.getElementById("searchCategory").selectedIndex = 0;
+        await fetchList("", "");
+    }
+
+    async function searchProduct(){
+        const name = document.getElementById("searchName").value.trim();
+        const cat = document.getElementById("searchCategory").value;
+        await fetchList(name, cat);
+    }
+
+    async function fetchList(productName, category){
+        const token = getToken();
+        let url = `${baseURL}/product/list`;
+        let params = new URLSearchParams();
+        if(productName) params.append("productName",productName);
+        if(category) params.append("category",category);
+        if(params.toString()) url += "?" + params.toString();
+
+        const res = await fetch(url,{
+            method:"GET",
+            headers:{
+                "Authorization":`Bearer ${token}`
+            }
+        });
+        if(res.status ===401){
+            alert("登录失效，请重新登录");
+            logout();
+            return;
+        }
+        const json = await res.json();
+        const list = json.data || [];
+        const tbody = document.getElementById("tableBody");
+        tbody.innerHTML = "";
+        list.forEach(item=>{
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+            <td>${item.id}</td>
+            <td>${item.productName}</td>
+            <td>${item.category||""}</td>
+            <td>${item.price}</td>
+            <td>${item.stock}</td>
+            <td>
+                <button class="btn-edit" onclick='openEditModal(${JSON.stringify(item).replaceAll('"','&quot;')})'>编辑</button>
+                <button class="btn-del" onclick="del(${item.id})">删除</button>
+                <button class="btn-order" onclick="openOrderModal(${item.id})">下单</button>
+            </td>
+            `;
+            tbody.appendChild(tr);
+        })
+    }
+
+    // 获取统计数据
+    async function loadStatistics(){
+        const token = getToken();
+        const res = await fetch(`${baseURL}/product/statistics`,{
+            headers:{"Authorization":`Bearer ${token}`}
+        });
+        if(res.status===401) return;
+        const json = await res.json();
+        if(json.code===200){
+            document.getElementById("statTotalProduct").innerText = json.data.totalProduct;
+            document.getElementById("statTotalStock").innerText = json.data.totalStock;
+            document.getElementById("statWarnCount").innerText = json.data.warnStockCount;
+        }
+    }
+
+    //加载订单列表
+    async function loadOrderList(){
+        const token = getToken();
+        const res = await fetch(`${baseURL}/order/list`,{
+            headers:{
+                "Authorization":`Bearer ${token}`
+            }
+        });
+        if(res.status ===401){
+            alert("登录失效，请重新登录");
+            logout();
+            return;
+        }
+        const json = await res.json();
+        const list = json.data || [];
+        const tbody = document.getElementById("orderTableBody");
+        tbody.innerHTML = "";
+        list.forEach(item=>{
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td>${item.id}</td>
+                <td>${item.productId}</td>
+                <td>${item.buyNum}</td>
+                <td>${item.createTime||""}</td>
+            `;
+            tbody.appendChild(tr);
+        })
+    }
+
+    // 新增商品弹窗
+    function openAddModal(){
+        document.getElementById("addProductName").value = "";
+        document.getElementById("addPrice").value = "";
+        document.getElementById("addStock").value = "";
+        document.getElementById("addMask").style.display="flex";
+    }
+    function closeAddModal(){
+        document.getElementById("addMask").style.display="none";
+    }
+    async function submitAdd(){
+        const productName = document.getElementById("addProductName").value.trim();
+        const category = document.getElementById("addCategory").value;
+        const price = parseFloat(document.getElementById("addPrice").value);
+        const stock = parseInt(document.getElementById("addStock").value);
+        if(!productName || isNaN(price)||isNaN(stock)){
+            alert("请填写完整表单");
+            return;
+        }
+        const token = getToken();
+        const res = await fetch(`${baseURL}/product/add`,{
+            method:"POST",
+            headers:{
+                "Authorization":`Bearer ${token}`,
+                "Content-Type":"application/json"
+            },
+            body:JSON.stringify({productName,category,price,stock})
+        })
+        if(res.status===401){
+            alert("登录失效");
+            logout();
+            return;
+        }
+        const json = await res.json();
+        if(json.code===200){
+            alert("新增成功");
+            closeAddModal();
+            loadProductList();
+            loadStatistics();
+            loadOrderList();
+        }else{
+            alert(json.msg||"新增失败");
+        }
+    }
+
+    // 编辑弹窗
+    function openEditModal(item){
+        document.getElementById("modalId").value = item.id;
+        document.getElementById("modalProductName").value = item.productName;
+        document.getElementById("modalCategory").value = item.category||"日用品";
+        document.getElementById("modalPrice").value = item.price;
+        document.getElementById("modalStock").value = item.stock;
+        document.getElementById("editMask").style.display="flex";
+    }
+    function closeEditModal(){
+        document.getElementById("editMask").style.display="none";
+    }
+    async function submitEdit(){
+        const id = document.getElementById("modalId").value;
+        const productName = document.getElementById("modalProductName").value.trim();
+        const category = document.getElementById("modalCategory").value;
+        const price = parseFloat(document.getElementById("modalPrice").value);
+        const stock = parseInt(document.getElementById("modalStock").value);
+        if(!productName || isNaN(price)||isNaN(stock)){
+            alert("请填写完整");
+            return;
+        }
+        const token = getToken();
+        const res = await fetch(`${baseURL}/product/update`,{
+            method:"PUT",
+            headers:{
+                "Authorization":`Bearer ${token}`,
+                "Content-Type":"application/json"
+            },
+            body:JSON.stringify({
+                id:Number(id),
+                productName,
+                category,
+                price,
+                stock
+            })
+        })
+        if(res.status===401){
+            alert("登录失效");
+            logout();
+            return;
+        }
+        const json = await res.json();
+        if(json.code===200){
+            alert("修改成功");
+            closeEditModal();
+            loadProductList();
+            loadStatistics();
+            loadOrderList();
+        }else{
+            alert(json.msg||"修改失败");
+        }
+    }
+
+    // 删除
+    async function del(id){
+        if(!confirm("确定删除？")) return;
+        const token = getToken();
+        const res = await fetch(`${baseURL}/product/${id}`,{
+            method:"DELETE",
+            headers:{
+                "Authorization":`Bearer ${token}`
+            }
+        })
+        if(res.status===401){
+            alert("登录失效");
+            logout();
+            return;
+        }
+        const json = await res.json();
+        if(json.code===200){
+            alert("删除成功");
+            loadProductList();
+            loadStatistics();
+            loadOrderList();
+        }
+    }
+
+    // 下单弹窗
+    function openOrderModal(productId){
+        document.getElementById("orderProductId").value = productId;
+        document.getElementById("orderBuyNum").value = 1;
+        document.getElementById("orderMask").style.display="flex";
+    }
+    function closeOrderModal(){
+        document.getElementById("orderMask").style.display="none";
+    }
+    async function submitOrder(){
+        const productId = Number(document.getElementById("orderProductId").value);
+        const buyNum = Number(document.getElementById("orderBuyNum").value);
+        if(buyNum <=0){
+            alert("购买数量必须大于0");
+            return;
+        }
+        const token = getToken();
+        const params = new URLSearchParams();
+        params.append("productId",productId);
+        params.append("buyNum",buyNum);
+        const res = await fetch(`${baseURL}/order/create?`+params.toString(),{
+            method:"POST",
+            headers:{
+                "Authorization":`Bearer ${token}`
+            }
+        });
+        if(res.status===401){
+            alert("登录失效");
+            logout();
+            return;
+        }
+        const json = await res.json();
+        if(json.code===200){
+            alert("下单成功！");
+            closeOrderModal();
+            loadProductList();
+            loadStatistics();
+            loadOrderList();
+        }else{
+            alert(json.msg||"下单失败");
+        }
+    }
+
+    window.onload = function(){
+        if(getToken()){
+            showMain();
+            loadProductList();
+            loadStatistics();
+            loadOrderList();
+        }
+    }
+</script>
+</body>
+</html>
